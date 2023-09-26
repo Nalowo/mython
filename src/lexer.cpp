@@ -81,11 +81,13 @@ Lexer::Lexer(std::istream& /*input*/) {
 
 const Token& Lexer::CurrentToken() const {
     // Заглушка. to do
+    // вернуть значение "вершины"
     throw std::logic_error("Not implemented"s);
 }
 
 Token Lexer::NextToken() {
     // Заглушка. to do
+    // инкрементировать вершину
     throw std::logic_error("Not implemented"s);
 }
 
