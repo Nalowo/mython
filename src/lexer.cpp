@@ -75,7 +75,7 @@ std::ostream& operator<<(std::ostream& os, const Token& rhs) {
     return os << "Unknown token :("sv;
 }
 
-Lexer::Lexer(std::istream& /*input*/) {
+Lexer::Lexer(std::istream& input) {
     // to do 
 }
 

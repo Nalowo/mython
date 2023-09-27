@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <string>
 #include <variant>
+#include <list>
+#include <unordered_map>
 
 namespace parse {
 
@@ -134,6 +136,31 @@ public:
 private:
     // to do
     // поиск по хешмапе с ключаим-ключевыми словами/символами вставка в список, хранение итератора на текущую лексему или написать свою структуру данных похожую на список
+    const std::unordered_map<std::string, TokenBase> keywords
+    {
+        {"class"s, token_type::Class{}},
+        {"return"s, token_type::Return{}},
+        {"if"s, token_type::If{}},
+        {"else"s, token_type::Else{}},
+        {"def"s, token_type::Def{}},
+        // {"/n"s, token_type::Newline{}},
+        {"print"s, token_type::Print{}},
+        // {"indent"s, token_type::Indent{}},
+        // {"dedent"s, token_type::Dedent{}},
+        // {"EOF"s, token_type::Eof{}},
+        {"and"s, token_type::And{}},
+        {"or"s, token_type::Or{}},
+        {"not"s, token_type::Not{}},
+        {"=="s, token_type::Eq{}},
+        {"!="s, token_type::NotEq{}},
+        {"<="s, token_type::LessOrEq{}},
+        {">="s, token_type::GreaterOrEq{}},
+        {"None"s, token_type::None{}},
+        {"True"s, token_type::True{}},
+        {"False"s, token_type::False{}},
+    };
+    std::list<TokenBase> tokens;
+    std::list<TokenBase>::iterator curr_token = tokens.begin();
 };
 
 }  // namespace parse
