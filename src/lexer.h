@@ -8,6 +8,7 @@
 #include <variant>
 #include <list>
 #include <unordered_map>
+#include <stack>
 
 namespace parse {
 
@@ -135,6 +136,9 @@ public:
 
 private:
     // to do
+
+    void BufferPareser(const std::string& line, std::stack<uint32_t, std::list<uint32_t>>& intend_stack);
+
     // поиск по хешмапе с ключаим-ключевыми словами/символами вставка в список, хранение итератора на текущую лексему или написать свою структуру данных похожую на список
     const std::unordered_map<std::string, Token> keywords
     {

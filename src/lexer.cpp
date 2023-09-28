@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <charconv>
-#include <unordered_map>
-#include <stack>
 
 using namespace std;
 
@@ -78,16 +76,36 @@ std::ostream& operator<<(std::ostream& os, const Token& rhs) {
 
 Lexer::Lexer(std::istream& input)
 {
-    string line = "";
+    string line;
+    line.reserve(1024);
+
     stack<uint32_t, std::list<uint32_t>> intend_stack;
     
-    while (getline(input, line))
+    while (input.read(line.data(), line.capacity())) 
     {
-        if (line[0] == '#')
-        {
-            continue;
-        }
+        
     }
+}
+
+void BufferPareser(const std::string& line, std::stack<uint32_t, std::list<uint32_t>>& intend_stack)
+{ // можно эту функцию вызывать рекурсивно и передавать в нее char *, постоянно смещать его, так и парсить, хотя, лучше наверно string_view, так будет контроль конца строки
+    if (line.empty())
+    {
+        return;
+    }
+
+    switch (line[0])
+    {
+    case ' ':
+        
+        break;
+    case '#':
+        
+        break;
+    default:
+        break;
+    }
+
 }
 
 const Token& Lexer::CurrentToken() const {
