@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <charconv>
 #include <unordered_map>
+#include <stack>
 
 using namespace std;
 
@@ -75,8 +76,18 @@ std::ostream& operator<<(std::ostream& os, const Token& rhs) {
     return os << "Unknown token :("sv;
 }
 
-Lexer::Lexer(std::istream& input) {
-    // to do 
+Lexer::Lexer(std::istream& input)
+{
+    string line = "";
+    stack<uint32_t, std::list<uint32_t>> intend_stack;
+    
+    while (getline(input, line))
+    {
+        if (line[0] == '#')
+        {
+            continue;
+        }
+    }
 }
 
 const Token& Lexer::CurrentToken() const {
