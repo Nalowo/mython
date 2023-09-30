@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <iostream>
 
 using namespace std;
 
@@ -76,34 +77,90 @@ std::ostream& operator<<(std::ostream& os, const Token& rhs) {
 
 Lexer::Lexer(std::istream& input)
 {
-    string line;
-    line.reserve(1024);
+    const size_t BUFF_SIZE = 1024;
+    char line[BUFF_SIZE];
 
     stack<uint32_t, std::list<uint32_t>> intend_stack;
     
-    while (input.read(line.data(), line.capacity())) 
-    {
-        
-    }
+    bool is_newline = true;
+    input.read(line, BUFF_SIZE);
+    do {
+        BufferPareser(line, intend_stack, is_newline);
+        is_newline = false;
+    
+    } while (input.read(line, BUFF_SIZE));
 }
 
-void BufferPareser(const std::string& line, std::stack<uint32_t, std::list<uint32_t>>& intend_stack)
+void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<uint32_t>>& intend_stack, bool is_newline = false)
 { // можно эту функцию вызывать рекурсивно и передавать в нее char *, постоянно смещать его, так и парсить, хотя, лучше наверно string_view, так будет контроль конца строки
-    if (line.empty())
+    if (line.empty() || line[0] == EOF)
     {
         return;
     }
 
     switch (line[0])
     {
-    case ' ':
+    case ' ': // реализовать обработку ошибок кол-во отступов // еще нужно реализовать уменьшение отступа
+        {
+            auto pos_intend_end = line.find_first_not_of(' ', 0);
         
-        break;
+            if (is_newline) // нужно чтобы не учитывались единичные пробелы в начале строки, хотя, может лучше с этим работать в AST
+            {
+                auto intend_count = (pos_intend_end + 1) / 2;
+
+                intend_stack.push(intend_count);
+
+                for (int i = 0; i < intend_count; i++)
+                {
+                    tokens.emplace_back(token_type::Indent{});
+                }
+            }
+
+            BufferPareser({line.data() + pos_intend_end}, intend_stack);
+            break;
+        }
+
+
+    case '\n':
+        {
+            tokens.emplace_back(token_type::Newline{});
+            BufferPareser({line.data() + 1}, intend_stack, true);
+            break;
+        }
+
+
     case '#':
-        
         break;
+
     default:
-        break;
+        {
+            size_t pos_end_word = 0;
+
+            for (size_t i = 0; i < line.size(); i++)
+            {
+                if (std::isalpha(line[i]) || std::isdigit(line[i]))
+                {
+                    ++pos_end_word;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            auto token = keywords.find(line.substr(0, pos_end_word));
+            if (token != keywords.end())
+            {
+                tokens.emplace_back(token->second);
+            }
+            else
+            {
+                tokens.emplace_back(token_type::Id{std::string{line.substr(0, pos_end_word)}});
+            }
+
+            BufferPareser({line.data() + pos_end_word}, intend_stack);
+            break;
+        }
     }
 
 }
