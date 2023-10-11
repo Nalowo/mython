@@ -89,6 +89,9 @@ Lexer::Lexer(std::istream& input)
         is_newline = false;
     
     } while (input.read(line, BUFF_SIZE));
+
+    tokens.emplace_back(token_type::Eof{});
+    curr_token = tokens.begin();
 }
 
 void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<uint32_t>>& intend_stack, bool is_newline = false)
@@ -100,7 +103,7 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
 
     switch (line[0])
     {
-    case ' ': // реализовать обработку ошибок кол-во отступов // еще нужно реализовать уменьшение отступа
+    case ' ': // нужно реализовать уменьшение отступа // а может и не нужно, по идее после новой строки у меня всегда должен быть отступ
         {
             auto pos_intend_end = line.find_first_not_of(' ', 0);
         
@@ -116,7 +119,8 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
                 }
             }
 
-            BufferPareser({line.data() + pos_intend_end}, intend_stack);
+            // BufferPareser({line.data() + (pos_intend_end == std::string::npos ? line.size() : pos_intend_end)}, intend_stack);
+            BufferPareser({line.data() + std::min(pos_intend_end, line.size())}, intend_stack);
             break;
         }
 
@@ -134,19 +138,7 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
 
     default:
         {
-            size_t pos_end_word = 0;
-
-            for (size_t i = 0; i < line.size(); i++)
-            {
-                if (std::isalpha(line[i]) || std::isdigit(line[i]))
-                {
-                    ++pos_end_word;
-                }
-                else
-                {
-                    break;
-                }
-            }
+            size_t pos_end_word = line.find_first_of(" \n", 0);
 
             auto token = keywords.find(line.substr(0, pos_end_word));
             if (token != keywords.end())
@@ -158,23 +150,35 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
                 tokens.emplace_back(token_type::Id{std::string{line.substr(0, pos_end_word)}});
             }
 
-            BufferPareser({line.data() + pos_end_word}, intend_stack);
+            // BufferPareser({line.data() + (pos_end_word == std::string::npos ? line.size() : pos_end_word)}, intend_stack);
+            BufferPareser({line.data() + std::min(pos_end_word, line.size())}, intend_stack);
             break;
         }
     }
 
 }
 
-const Token& Lexer::CurrentToken() const {
-    // Заглушка. to do
-    // вернуть значение "вершины"
-    throw std::logic_error("Not implemented"s);
+const Token& Lexer::CurrentToken() const 
+{
+    return (*curr_token);
 }
 
-Token Lexer::NextToken() {
-    // Заглушка. to do
-    // инкрементировать вершину
-    throw std::logic_error("Not implemented"s);
+Token Lexer::NextToken() 
+{
+    if (*curr_token != Token(token_type::Eof{}))
+    {
+        ++curr_token;
+    }
+
+    return *(curr_token);
+}
+
+void Lexer::PrintTokens()
+{
+    for (const auto& token : tokens)
+    {
+        std::cout << token << std::endl;
+    }
 }
 
 }  // namespace parse

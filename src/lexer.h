@@ -134,6 +134,8 @@ public:
         throw LexerError("Not implemented"s);
     }
 
+    void PrintTokens();
+
 private:
     // to do
 
@@ -163,8 +165,8 @@ private:
         {"True", token_type::True{}},
         {"False", token_type::False{}},
     };
-    std::list<TokenBase> tokens;
-    std::list<TokenBase>::iterator curr_token = tokens.begin();
+    std::list<Token> tokens;
+    std::list<Token>::iterator curr_token = tokens.begin();
 };
 
 }  // namespace parse
