@@ -179,6 +179,7 @@ private:
         virtual size_t GetTokenWordEnd() = 0;
     };
 
+    // в функции парсере буду создавать эти классы унаследованные от Tokenizer_interface
     class TokenizerEof;
     class TokenizerIntend;
     class TokenizerNewline;
