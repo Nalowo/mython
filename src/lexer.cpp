@@ -75,6 +75,8 @@ std::ostream& operator<<(std::ostream& os, const Token& rhs) {
     return os << "Unknown token :("sv;
 }
 
+
+
 Lexer::Lexer(std::istream& input)
 {
     const size_t BUFF_SIZE = 1024;
@@ -103,7 +105,7 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
 
     switch (line[0])
     {
-    case ' ': // нужно реализовать уменьшение отступа // а может и не нужно, по идее после новой строки у меня всегда должен быть отступ
+    case ' ': // нужно реализовать уменьшение отступа
         {
             auto pos_intend_end = line.find_first_not_of(' ', 0);
         
@@ -111,11 +113,23 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
             {
                 auto intend_count = (pos_intend_end + 1) / 2;
 
-                intend_stack.push(intend_count);
-
-                for (int i = 0; i < intend_count; i++)
+                if (intend_stack.top() < intend_count)
                 {
-                    tokens.emplace_back(token_type::Indent{});
+                    intend_stack.push(intend_count);
+                    for (int i = 0; i < intend_count; i++)
+                    {
+                        tokens.emplace_back(token_type::Indent{});
+                    }
+                }
+                else
+                {
+                    intend_count = intend_stack.top() - intend_count;
+                    intend_stack.pop();
+
+                    for (int i = 0; i < intend_count; i++)
+                    {
+                        tokens.emplace_back(token_type::Dedent{});
+                    }
                 }
             }
 
@@ -139,19 +153,26 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
     default:
         {
             size_t pos_end_word = line.find_first_of(" \n", 0);
+            pos_end_word = std::min(pos_end_word, line.size());
+            std::string_view subline = line.substr(0, pos_end_word);
 
-            auto token = keywords.find(line.substr(0, pos_end_word));
+            if (key_signs.find(subline[0]) != key_signs.end())
+            {
+                tokens.emplace_back(token_type::Char{subline[0]});
+            }
+
+            auto token = keywords.find(subline);
             if (token != keywords.end())
             {
                 tokens.emplace_back(token->second);
             }
             else
             {
-                tokens.emplace_back(token_type::Id{std::string{line.substr(0, pos_end_word)}});
+                tokens.emplace_back(token_type::Id{std::string{subline}});
             }
 
             // BufferPareser({line.data() + (pos_end_word == std::string::npos ? line.size() : pos_end_word)}, intend_stack);
-            BufferPareser({line.data() + std::min(pos_end_word, line.size())}, intend_stack);
+            BufferPareser({line.data() + pos_end_word}, intend_stack);
             break;
         }
     }

@@ -8,6 +8,7 @@
 #include <variant>
 #include <list>
 #include <unordered_map>
+#include <unordered_set>
 #include <stack>
 
 namespace parse {
@@ -165,6 +166,24 @@ private:
         {"True", token_type::True{}},
         {"False", token_type::False{}},
     };
+    // const std::unordered_set<std::string_view> key_signs = {"=", ".", ",", "(", "+", "<", "=", ")"};
+    const std::unordered_set<char> key_signs = {'=', '.', ',', '(', '+', '<', '=', ')'};
+
+    class Tokenizer_interface
+    {
+    public:
+        virtual ~Tokenizer_interface() = default;
+
+        virtual void Parse(std::string_view /*line*/) = 0;
+        virtual Token GetToken() = 0;
+        virtual size_t GetTokenWordEnd() = 0;
+    };
+
+    class TokenizerEof;
+    class TokenizerIntend;
+    class TokenizerNewline;
+    class TokenizerSomeWord;
+
     std::list<Token> tokens;
     std::list<Token>::iterator curr_token = tokens.begin();
 };
