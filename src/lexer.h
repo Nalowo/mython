@@ -138,36 +138,8 @@ public:
     void PrintTokens();
 
 private:
-    // to do
 
-    void BufferPareser(std::string_view line, std::stack<uint32_t, std::list<uint32_t>>& intend_stack, bool is_newline);
-
-    // поиск по хешмапе с ключаим-ключевыми словами/символами вставка в список, хранение итератора на текущую лексему или написать свою структуру данных похожую на список
-    const std::unordered_map<std::string_view, Token> keywords
-    {
-        {"class", token_type::Class{}},
-        {"return", token_type::Return{}},
-        {"if", token_type::If{}},
-        {"else", token_type::Else{}},
-        {"def", token_type::Def{}},
-        // {"/n"s, token_type::Newline{}},
-        {"print", token_type::Print{}},
-        // {"indent"s, token_type::Indent{}},
-        // {"dedent"s, token_type::Dedent{}},
-        // {"EOF"s, token_type::Eof{}},
-        {"and", token_type::And{}},
-        {"or", token_type::Or{}},
-        {"not", token_type::Not{}},
-        {"==", token_type::Eq{}},
-        {"!=", token_type::NotEq{}},
-        {"<=", token_type::LessOrEq{}},
-        {">=", token_type::GreaterOrEq{}},
-        {"None", token_type::None{}},
-        {"True", token_type::True{}},
-        {"False", token_type::False{}},
-    };
-    // const std::unordered_set<std::string_view> key_signs = {"=", ".", ",", "(", "+", "<", "=", ")"};
-    const std::unordered_set<char> key_signs = {'=', '.', ',', '(', '+', '<', '=', ')'};
+    void BufferPareser(std::string_view line, bool is_newline);
 
     class Tokenizer_interface
     {
@@ -179,14 +151,13 @@ private:
         virtual size_t GetTokenWordEnd() = 0;
     };
 
-    // в функции парсере буду создавать эти классы унаследованные от Tokenizer_interface
     class TokenizerEof;
     class TokenizerIntend;
     class TokenizerNewline;
     class TokenizerSomeWord;
 
-    std::list<Token> tokens;
-    std::list<Token>::iterator curr_token = tokens.begin();
+    std::list<Token> tokens_;
+    std::list<Token>::iterator curr_token_ = tokens_.end();
 };
 
 }  // namespace parse

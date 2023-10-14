@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <charconv>
 #include <iostream>
+#include <optional>
 
 using namespace std;
 
@@ -75,29 +76,193 @@ std::ostream& operator<<(std::ostream& os, const Token& rhs) {
     return os << "Unknown token :("sv;
 }
 
+// Контексты start ----------------------------------------------------------------------------------------
 
+class Lexer::TokenizerEof: public Lexer::Tokenizer_interface
+{
+public:
+    Token GetToken() override 
+    {
+        return Token{token_type::Eof{}};
+    }
+
+    size_t GetTokenWordEnd() override
+    {
+        return std::string::npos;
+    }
+
+private:
+    void Parse(std::string_view /*line*/) override {}
+};
+
+class Lexer::TokenizerIntend: public Lexer::Tokenizer_interface
+{
+public:
+
+    TokenizerIntend(std::list<Token>& tokens, bool is_newline = false): tokens_(tokens), is_newline_(is_newline){}
+
+    void Parse(std::string_view line) override
+    {
+        pos_intend_end_ = std::min(line.find_first_not_of(' ', 0), line.size());
+        
+        if (is_newline_)
+        {
+            auto intend_count = (pos_intend_end_ + 1) / 2;
+
+            if (intend_stack_.empty() || intend_stack_.top() < intend_count)
+            {
+                intend_stack_.push(intend_count);
+                for (int i = 0; i < intend_count; i++)
+                {
+                    tokens_.emplace_back(token_type::Indent{});
+                }
+            }
+            else
+            {
+                intend_count = intend_stack_.top() - intend_count;
+                intend_stack_.pop();
+
+                for (int i = 0; i < intend_count; i++)
+                {
+                    tokens_.emplace_back(token_type::Dedent{});
+                }
+            }
+        }
+        
+    }
+
+    size_t GetTokenWordEnd() override
+    {
+        return pos_intend_end_;
+    }
+
+private:
+
+    Token GetToken() override { return Token{token_type::Indent{}}; }
+
+    std::list<Token>& tokens_;
+    size_t pos_intend_end_ = 0;
+    static std::stack<uint32_t, std::list<uint32_t>> intend_stack_;
+    bool is_newline_;
+};
+std::stack<uint32_t, std::list<uint32_t>>  Lexer::TokenizerIntend::intend_stack_{};
+
+class Lexer::TokenizerNewline: public Lexer::Tokenizer_interface
+{
+public:
+    Token GetToken() override
+    {
+        return Token{token_type::Newline{}};
+    }
+
+    size_t GetTokenWordEnd() override
+    {
+        return 1;
+    }
+
+private:
+    void Parse(std::string_view /*line*/) override {}
+};
+
+class Lexer::TokenizerSomeWord: public Lexer::Tokenizer_interface
+{
+public:
+
+    void Parse(std::string_view line) override
+    {
+        pos_end_word_ = std::min(line.find_first_of(" \n", 0), line.size());
+        std::string_view subline = line.substr(0, pos_end_word_);
+
+        if (key_signs_.find(subline[0]) != key_signs_.end())
+        {
+            out_ = token_type::Char{subline[0]};
+        }
+
+        auto token = keywords_.find(subline);
+        if (token != keywords_.end())
+        {
+            out_ = std::move(token->second);
+        }
+        else
+        {
+            out_ = token_type::Id{std::string{subline}};
+        }
+    }
+
+    Token GetToken() override
+    {
+        if (out_.has_value())
+        {
+            return std::move(*out_);
+        }
+        else
+        {
+            throw std::runtime_error("No token");
+        }
+    }
+
+    size_t GetTokenWordEnd() override
+    {
+        return pos_end_word_;
+    }
+
+private:
+    size_t pos_end_word_ = 0;
+    std::optional<Token> out_ = std::nullopt;
+    static const std::unordered_map<std::string_view, Token> keywords_;
+    static const std::unordered_set<char> key_signs_;
+};
+const std::unordered_map<std::string_view, Token> Lexer::TokenizerSomeWord::keywords_
+    {
+        {"class", token_type::Class{}},
+        {"return", token_type::Return{}},
+        {"if", token_type::If{}},
+        {"else", token_type::Else{}},
+        {"def", token_type::Def{}},
+        // {"/n"s, token_type::Newline{}},
+        {"print", token_type::Print{}},
+        // {"indent"s, token_type::Indent{}},
+        // {"dedent"s, token_type::Dedent{}},
+        // {"EOF"s, token_type::Eof{}},
+        {"and", token_type::And{}},
+        {"or", token_type::Or{}},
+        {"not", token_type::Not{}},
+        {"==", token_type::Eq{}},
+        {"!=", token_type::NotEq{}},
+        {"<=", token_type::LessOrEq{}},
+        {">=", token_type::GreaterOrEq{}},
+        {"None", token_type::None{}},
+        {"True", token_type::True{}},
+        {"False", token_type::False{}},
+    };
+const std::unordered_set<char> Lexer::TokenizerSomeWord::key_signs_{'=', '.', ',', '(', '+', '<', '=', ')'};
+
+// Контексты end----------------------------------------------------------------------------------------
 
 Lexer::Lexer(std::istream& input)
 {
     const size_t BUFF_SIZE = 1024;
     char line[BUFF_SIZE];
-
-    stack<uint32_t, std::list<uint32_t>> intend_stack;
     
     bool is_newline = true;
     input.read(line, BUFF_SIZE);
     do {
-        BufferPareser(line, intend_stack, is_newline);
+        BufferPareser(line, is_newline);
         is_newline = false;
     
     } while (input.read(line, BUFF_SIZE));
 
-    tokens.emplace_back(token_type::Eof{});
-    curr_token = tokens.begin();
+    // if (input.eof())
+    // {
+    //     tokens.emplace_back(token_type::Eof{});
+    // }
+
+    tokens_.emplace_back(TokenizerEof{}.GetToken());
+    curr_token_ = tokens_.begin();
 }
 
-void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<uint32_t>>& intend_stack, bool is_newline = false)
-{ // можно эту функцию вызывать рекурсивно и передавать в нее char *, постоянно смещать его, так и парсить, хотя, лучше наверно string_view, так будет контроль конца строки
+void Lexer::BufferPareser(std::string_view line, bool is_newline = false)
+{
     if (line.empty() || line[0] == EOF)
     {
         return;
@@ -105,44 +270,21 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
 
     switch (line[0])
     {
-    case ' ': // нужно реализовать уменьшение отступа
+    case ' ':
         {
-            auto pos_intend_end = line.find_first_not_of(' ', 0);
-        
-            if (is_newline) // нужно чтобы не учитывались единичные пробелы в начале строки, хотя, может лучше с этим работать в AST
-            {
-                auto intend_count = (pos_intend_end + 1) / 2;
+            auto tokenize = TokenizerIntend(tokens_, is_newline);
+            tokenize.Parse(line);
 
-                if (intend_stack.top() < intend_count)
-                {
-                    intend_stack.push(intend_count);
-                    for (int i = 0; i < intend_count; i++)
-                    {
-                        tokens.emplace_back(token_type::Indent{});
-                    }
-                }
-                else
-                {
-                    intend_count = intend_stack.top() - intend_count;
-                    intend_stack.pop();
-
-                    for (int i = 0; i < intend_count; i++)
-                    {
-                        tokens.emplace_back(token_type::Dedent{});
-                    }
-                }
-            }
-
-            // BufferPareser({line.data() + (pos_intend_end == std::string::npos ? line.size() : pos_intend_end)}, intend_stack);
-            BufferPareser({line.data() + std::min(pos_intend_end, line.size())}, intend_stack);
+            BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
             break;
         }
 
 
     case '\n':
         {
-            tokens.emplace_back(token_type::Newline{});
-            BufferPareser({line.data() + 1}, intend_stack, true);
+            tokens_.emplace_back(TokenizerNewline{}.GetToken()); 
+
+            BufferPareser({line.data() + 1}, true);
             break;
         }
 
@@ -152,51 +294,34 @@ void Lexer::BufferPareser(std::string_view line, std::stack<uint32_t, std::list<
 
     default:
         {
-            size_t pos_end_word = line.find_first_of(" \n", 0);
-            pos_end_word = std::min(pos_end_word, line.size());
-            std::string_view subline = line.substr(0, pos_end_word);
-
-            if (key_signs.find(subline[0]) != key_signs.end())
-            {
-                tokens.emplace_back(token_type::Char{subline[0]});
-            }
-
-            auto token = keywords.find(subline);
-            if (token != keywords.end())
-            {
-                tokens.emplace_back(token->second);
-            }
-            else
-            {
-                tokens.emplace_back(token_type::Id{std::string{subline}});
-            }
-
-            // BufferPareser({line.data() + (pos_end_word == std::string::npos ? line.size() : pos_end_word)}, intend_stack);
-            BufferPareser({line.data() + pos_end_word}, intend_stack);
+            auto tokenize = TokenizerSomeWord();
+            tokenize.Parse(line);
+            tokens_.emplace_back(tokenize.GetToken());
+            
+            BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
             break;
         }
     }
-
 }
 
 const Token& Lexer::CurrentToken() const 
 {
-    return (*curr_token);
+    return (*curr_token_);
 }
 
 Token Lexer::NextToken() 
 {
-    if (*curr_token != Token(token_type::Eof{}))
+    if (*curr_token_ != Token(token_type::Eof{}))
     {
-        ++curr_token;
+        ++curr_token_;
     }
 
-    return *(curr_token);
+    return *(curr_token_);
 }
 
 void Lexer::PrintTokens()
 {
-    for (const auto& token : tokens)
+    for (const auto& token : tokens_)
     {
         std::cout << token << std::endl;
     }
