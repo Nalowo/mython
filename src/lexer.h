@@ -219,6 +219,7 @@ private:
     class TokenizerIntend;
     class TokenizerNewline;
     class TokenizerSomeWord;
+    class TokenizerNumber; // to do
 
     std::list<Token> tokens_;
     std::list<Token>::iterator curr_token_ = tokens_.end();
