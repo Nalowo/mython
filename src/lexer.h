@@ -102,37 +102,101 @@ public:
     // Если текущий токен имеет тип T, метод возвращает ссылку на него.
     // В противном случае метод выбрасывает исключение LexerError
     template <typename T>
-    const T& Expect() const {
-        using namespace std::literals;
-        // Заглушка. Реализуйте метод самостоятельно
-        throw LexerError("Not implemented"s);
+    const T& Expect() const 
+    {
+        if (curr_token_->Is<T>())
+        {
+            return curr_token_->As<T>();
+        }
+        else
+        {
+            throw LexerError("Is not required type"s);
+        }
     }
 
     // Метод проверяет, что текущий токен имеет тип T, а сам токен содержит значение value.
     // В противном случае метод выбрасывает исключение LexerError
     template <typename T, typename U>
-    void Expect(const U& /*value*/) const {
-        using namespace std::literals;
-        // Заглушка. Реализуйте метод самостоятельно
-        throw LexerError("Not implemented"s);
+    void Expect(const U& value) const 
+    {
+        if (!curr_token_->Is<T>())
+        {
+            throw LexerError("Is not required type"s);
+        }
+
+        auto value = curr_token_->TryAs<T>();
+
+        if(value)
+        {
+            if (value->value != value)
+            {
+                throw LexerError("Is not required value"s);
+            }
+        }
+        else 
+        {
+            throw LexerError("Is not required type"s);
+        }
     }
 
     // Если следующий токен имеет тип T, метод возвращает ссылку на него.
     // В противном случае метод выбрасывает исключение LexerError
     template <typename T>
-    const T& ExpectNext() {
-        using namespace std::literals;
-        // Заглушка. Реализуйте метод самостоятельно
-        throw LexerError("Not implemented"s);
+    const T& ExpectNext() 
+    {
+        auto iter_buff = curr_token_;
+        if (iter_buff != tokens_.end())
+        {
+            ++iter_buff;
+        }
+        else
+        {
+            throw LexerError("Next token not found"s);
+        }
+
+        if (iter_buff->Is<T>())
+        {
+            return iter_buff->As<T>();
+        }
+        else
+        {
+            throw LexerError("Is not required type"s);
+        }
     }
 
     // Метод проверяет, что следующий токен имеет тип T, а сам токен содержит значение value.
     // В противном случае метод выбрасывает исключение LexerError
     template <typename T, typename U>
-    void ExpectNext(const U& /*value*/) {
-        using namespace std::literals;
-        // Заглушка. Реализуйте метод самостоятельно
-        throw LexerError("Not implemented"s);
+    void ExpectNext(const U& value) 
+    {
+        auto iter_buff = curr_token_;
+        if (*iter_buff != Token(token_type::Eof))
+        {
+            ++iter_buff;
+        }
+        else
+        {
+            throw LexerError("Next token not found"s);
+        }
+        
+        if (!iter_buff->Is<T>())
+        {
+            throw LexerError("Is not required type"s);
+        }
+
+        auto value = iter_buff->TryAs<T>();
+
+        if(value)
+        {
+            if (value->value != value)
+            {
+                throw LexerError("Is not required value"s);
+            }
+        }
+        else 
+        {
+            throw LexerError("Is not required type"s);
+        }
     }
 
     void PrintTokens();
