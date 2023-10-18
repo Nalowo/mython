@@ -78,7 +78,7 @@ std::ostream& operator<<(std::ostream& os, const Token& rhs) {
 
 // Контексты start ----------------------------------------------------------------------------------------
 
-class Lexer::TokenizerEof: public Lexer::Tokenizer_interface
+class Lexer::TokenizerEof final: public Lexer::Tokenizer_interface
 {
 public:
     Token GetToken() override 
@@ -95,11 +95,14 @@ private:
     void Parse(std::string_view /*line*/) override {}
 };
 
-class Lexer::TokenizerIntend: public Lexer::Tokenizer_interface
+class Lexer::TokenizerIntend final: public Lexer::Tokenizer_interface
 {
 public:
 
-    TokenizerIntend(std::list<Token>& tokens, bool is_newline = false): tokens_(tokens), is_newline_(is_newline){}
+    TokenizerIntend(std::list<Token>& tokens, std::string_view line, bool is_newline = false): tokens_(tokens), is_newline_(is_newline)
+    {
+        Parse(line);
+    }
 
     void Parse(std::string_view line) override
     {
@@ -147,7 +150,7 @@ private:
 };
 std::stack<uint32_t, std::list<uint32_t>>  Lexer::TokenizerIntend::intend_stack_{};
 
-class Lexer::TokenizerNewline: public Lexer::Tokenizer_interface
+class Lexer::TokenizerNewline final: public Lexer::Tokenizer_interface
 {
 public:
     Token GetToken() override
@@ -164,9 +167,14 @@ private:
     void Parse(std::string_view /*line*/) override {}
 };
 
-class Lexer::TokenizerSomeWord: public Lexer::Tokenizer_interface
+class Lexer::TokenizerSomeWord final: public Lexer::Tokenizer_interface
 {
 public:
+
+    TokenizerSomeWord(std::string_view line)
+    {
+        Parse(line);
+    }
 
     void Parse(std::string_view line) override
     {
@@ -191,14 +199,7 @@ public:
 
     Token GetToken() override
     {
-        if (out_.has_value())
-        {
-            return std::move(*out_);
-        }
-        else
-        {
-            throw std::runtime_error("No token");
-        }
+        return std::move(out_);
     }
 
     size_t GetTokenWordEnd() override
@@ -208,7 +209,7 @@ public:
 
 private:
     size_t pos_end_word_ = 0;
-    std::optional<Token> out_ = std::nullopt;
+    Token out_;
     static const std::unordered_map<std::string_view, Token> keywords_;
     static const std::unordered_set<char> key_signs_;
 };
@@ -236,6 +237,62 @@ const std::unordered_map<std::string_view, Token> Lexer::TokenizerSomeWord::keyw
         {"False", token_type::False{}},
     };
 const std::unordered_set<char> Lexer::TokenizerSomeWord::key_signs_{'=', '.', ',', '(', '+', '<', '=', ')'};
+
+class Lexer::TokenizerNumber final: public Lexer::Tokenizer_interface
+{
+public:
+
+    TokenizerNumber(std::string_view line)
+    {
+        Parse(line);
+    }
+
+    void Parse(std::string_view line) override
+    {
+        size_t end_pos = std::min(line.find_first_of(" \n", 0), line.size());
+        if (end_pos == std::string::npos)
+        {
+            throw std::runtime_error("Not number");
+        }
+
+        number_ = token_type::Number{StringConvertToDigit(line.substr(0, end_pos))};
+    }
+
+    Token GetToken() override
+    {
+        return std::move(number_);
+    }
+
+    size_t GetTokenWordEnd() override
+    {
+        return pos_end_;
+    }
+
+private:
+
+    int StringConvertToDigit(std::string_view str)
+    {
+        int out = 0;
+
+        if (str.empty())
+        {
+            return out;
+        }
+
+        const std::from_chars_result res = std::from_chars(str.data(), str.data() + str.size(), out);
+
+        
+        if (res.ec != std::errc() || res.ptr != str.data() + str.size())
+        {
+            throw std::runtime_error("Can't convert string to digit");
+        }
+
+        return out;
+    }
+
+    size_t pos_end_ = 0;
+    Token number_;
+};
 
 // Контексты end----------------------------------------------------------------------------------------
 
@@ -268,40 +325,70 @@ void Lexer::BufferPareser(std::string_view line, bool is_newline = false)
         return;
     }
 
-    switch (line[0])
+    if (line[0] == ' ')
     {
-    case ' ':
-        {
-            auto tokenize = TokenizerIntend(tokens_, is_newline);
-            tokenize.Parse(line);
+        auto tokenize = TokenizerIntend(tokens_, line, is_newline);
 
-            BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
-            break;
-        }
-
-
-    case '\n':
-        {
-            tokens_.emplace_back(TokenizerNewline{}.GetToken()); 
-
-            BufferPareser({line.data() + 1}, true);
-            break;
-        }
-
-
-    case '#':
-        break;
-
-    default:
-        {
-            auto tokenize = TokenizerSomeWord();
-            tokenize.Parse(line);
-            tokens_.emplace_back(tokenize.GetToken());
-            
-            BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
-            break;
-        }
+        BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
     }
+    else if (line[0] == '\n')
+    {
+        tokens_.emplace_back(TokenizerNewline{}.GetToken()); 
+
+        BufferPareser({line.data() + 1}, true);
+    }
+    else if ('#')
+    {
+    }
+    else if (std::isdigit(line[0]))
+    {
+
+    }
+    else
+    {
+        auto tokenize = TokenizerSomeWord(line);
+        tokens_.emplace_back(tokenize.GetToken());
+        
+        BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
+    }
+
+    // switch (line[0])
+    // {
+    // case ' ':
+    //     {
+    //         auto tokenize = TokenizerIntend(tokens_, is_newline);
+    //         tokenize.Parse(line);
+
+    //         BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
+    //         break;
+    //     }
+
+    // case '\n':
+    //     {
+    //         tokens_.emplace_back(TokenizerNewline{}.GetToken()); 
+
+    //         BufferPareser({line.data() + 1}, true);
+    //         break;
+    //     }
+
+    // case '#':
+    //     break;
+
+    // default:
+    //     {
+    //         if (std::isdigit(line[0]))
+    //         {
+
+    //         }
+
+    //         auto tokenize = TokenizerSomeWord();
+    //         tokenize.Parse(line);
+    //         tokens_.emplace_back(tokenize.GetToken());
+            
+    //         BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
+    //         break;
+    //     }
+    // }
 }
 
 const Token& Lexer::CurrentToken() const 
