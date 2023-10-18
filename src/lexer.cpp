@@ -184,6 +184,7 @@ public:
         if (key_signs_.find(subline[0]) != key_signs_.end())
         {
             out_ = token_type::Char{subline[0]};
+            return;
         }
 
         auto token = keywords_.find(subline);
@@ -249,13 +250,9 @@ public:
 
     void Parse(std::string_view line) override
     {
-        size_t end_pos = std::min(line.find_first_of(" \n", 0), line.size());
-        if (end_pos == std::string::npos)
-        {
-            throw std::runtime_error("Not number");
-        }
+        pos_end_ = std::min(line.find_first_of(" \n", 0), line.size());
 
-        number_ = token_type::Number{StringConvertToDigit(line.substr(0, end_pos))};
+        number_ = token_type::Number{StringConvertToDigit(line.substr(0, pos_end_))};
     }
 
     Token GetToken() override
@@ -337,12 +334,15 @@ void Lexer::BufferPareser(std::string_view line, bool is_newline = false)
 
         BufferPareser({line.data() + 1}, true);
     }
-    else if ('#')
+    else if (line[0] == '#')
     {
     }
     else if (std::isdigit(line[0]))
     {
+        auto tokenize = TokenizerNumber(line);
+        tokens_.emplace_back(tokenize.GetToken());
 
+        BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
     }
     else
     {
@@ -351,44 +351,6 @@ void Lexer::BufferPareser(std::string_view line, bool is_newline = false)
         
         BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
     }
-
-    // switch (line[0])
-    // {
-    // case ' ':
-    //     {
-    //         auto tokenize = TokenizerIntend(tokens_, is_newline);
-    //         tokenize.Parse(line);
-
-    //         BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
-    //         break;
-    //     }
-
-    // case '\n':
-    //     {
-    //         tokens_.emplace_back(TokenizerNewline{}.GetToken()); 
-
-    //         BufferPareser({line.data() + 1}, true);
-    //         break;
-    //     }
-
-    // case '#':
-    //     break;
-
-    // default:
-    //     {
-    //         if (std::isdigit(line[0]))
-    //         {
-
-    //         }
-
-    //         auto tokenize = TokenizerSomeWord();
-    //         tokenize.Parse(line);
-    //         tokens_.emplace_back(tokenize.GetToken());
-            
-    //         BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
-    //         break;
-    //     }
-    // }
 }
 
 const Token& Lexer::CurrentToken() const 

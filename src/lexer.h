@@ -91,6 +91,7 @@ public:
 
 class Lexer {
 public:
+
     explicit Lexer(std::istream& input);
 
     // Возвращает ссылку на текущий токен или token_type::Eof, если поток токенов закончился
@@ -104,6 +105,8 @@ public:
     template <typename T>
     const T& Expect() const 
     {
+        using namespace std::literals;
+
         if (curr_token_->Is<T>())
         {
             return curr_token_->As<T>();
@@ -119,16 +122,18 @@ public:
     template <typename T, typename U>
     void Expect(const U& value) const 
     {
+        using namespace std::literals;
+
         if (!curr_token_->Is<T>())
         {
             throw LexerError("Is not required type"s);
         }
 
-        auto value = curr_token_->TryAs<T>();
+        auto valin = curr_token_->TryAs<T>();
 
-        if(value)
+        if(valin)
         {
-            if (value->value != value)
+            if (valin->value != value)
             {
                 throw LexerError("Is not required value"s);
             }
@@ -144,6 +149,8 @@ public:
     template <typename T>
     const T& ExpectNext() 
     {
+        using namespace std::literals;
+
         auto iter_buff = curr_token_;
         if (iter_buff != tokens_.end())
         {
@@ -169,8 +176,11 @@ public:
     template <typename T, typename U>
     void ExpectNext(const U& value) 
     {
+        using namespace std::literals;
+
         auto iter_buff = curr_token_;
-        if (*iter_buff != Token(token_type::Eof))
+        // if (*iter_buff != Token{token_type::Eof})
+        if (!(*iter_buff).Is<token_type::Eof>())
         {
             ++iter_buff;
         }
@@ -184,11 +194,11 @@ public:
             throw LexerError("Is not required type"s);
         }
 
-        auto value = iter_buff->TryAs<T>();
+        auto valin = iter_buff->TryAs<T>();
 
-        if(value)
+        if(valin)
         {
-            if (value->value != value)
+            if (valin->value != value)
             {
                 throw LexerError("Is not required value"s);
             }
