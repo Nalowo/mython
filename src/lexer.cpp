@@ -178,12 +178,13 @@ public:
 
     void Parse(std::string_view line) override
     {
-        pos_end_word_ = std::min(line.find_first_of(" \n", 0), line.size());
+        pos_end_word_ = std::min(line.find_first_of(" \n\0", 0), line.size());
         std::string_view subline = line.substr(0, pos_end_word_);
 
         if (key_signs_.find(subline[0]) != key_signs_.end())
         {
             out_ = token_type::Char{subline[0]};
+            pos_end_word_ = 1;
             return;
         }
 
@@ -237,7 +238,8 @@ const std::unordered_map<std::string_view, Token> Lexer::TokenizerSomeWord::keyw
         {"True", token_type::True{}},
         {"False", token_type::False{}},
     };
-const std::unordered_set<char> Lexer::TokenizerSomeWord::key_signs_{'=', '.', ',', '(', '+', '<', '=', ')'};
+const std::unordered_set<char> Lexer::TokenizerSomeWord::key_signs_
+{'=', '*', '.', ',', '(', '+', '<',  ')', '-'};
 
 class Lexer::TokenizerNumber final: public Lexer::Tokenizer_interface
 {
@@ -296,15 +298,18 @@ private:
 Lexer::Lexer(std::istream& input)
 {
     const size_t BUFF_SIZE = 1024;
-    char line[BUFF_SIZE];
+    std::string line(BUFF_SIZE, '\0');
+
     
     bool is_newline = true;
-    input.read(line, BUFF_SIZE);
-    do {
+    while (!input.fail() && !input.eof())
+    {
+        input.read(line.data(), BUFF_SIZE);
         BufferPareser(line, is_newline);
         is_newline = false;
+        line.assign(line.size(), '\0');
+    }
     
-    } while (input.read(line, BUFF_SIZE));
 
     // if (input.eof())
     // {
@@ -321,7 +326,7 @@ void Lexer::BufferPareser(std::string_view line, bool is_newline = false)
     {
         return;
     }
-
+ // стоит подумать над тем чтобы избавится от ветвлений и сделать все через словарь
     if (line[0] == ' ')
     {
         auto tokenize = TokenizerIntend(tokens_, line, is_newline);
@@ -334,7 +339,7 @@ void Lexer::BufferPareser(std::string_view line, bool is_newline = false)
 
         BufferPareser({line.data() + 1}, true);
     }
-    else if (line[0] == '#')
+    else if (line[0] == '#') // думаю что нужно будет сделать контекст для комментариев
     {
     }
     else if (std::isdigit(line[0]))
@@ -344,7 +349,7 @@ void Lexer::BufferPareser(std::string_view line, bool is_newline = false)
 
         BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
     }
-    else
+    else // нужно сделать парсинг строкового типа
     {
         auto tokenize = TokenizerSomeWord(line);
         tokens_.emplace_back(tokenize.GetToken());
