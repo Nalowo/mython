@@ -99,10 +99,10 @@ class Lexer::TokenizerIntend final: public Lexer::Tokenizer_interface
 {
 public:
 
-    TokenizerIntend(std::list<Token>& tokens, std::string_view line, bool is_newline = false): tokens_(tokens), is_newline_(is_newline)
-    {
-        Parse(line);
-    }
+    // TokenizerIntend(std::list<Token>& tokens, std::string_view line, bool is_newline = false): tokens_(tokens), is_newline_(is_newline)
+    // {
+    //     Parse(line);
+    // }
 
     void Parse(std::string_view line) override
     {
@@ -171,10 +171,10 @@ class Lexer::TokenizerSomeWord final: public Lexer::Tokenizer_interface
 {
 public:
 
-    TokenizerSomeWord(std::string_view line)
-    {
-        Parse(line);
-    }
+    // TokenizerSomeWord(std::string_view line)
+    // {
+    //     Parse(line);
+    // }
 
     void Parse(std::string_view line) override
     {
@@ -222,11 +222,7 @@ const std::unordered_map<std::string_view, Token> Lexer::TokenizerSomeWord::keyw
         {"if", token_type::If{}},
         {"else", token_type::Else{}},
         {"def", token_type::Def{}},
-        // {"/n"s, token_type::Newline{}},
         {"print", token_type::Print{}},
-        // {"indent"s, token_type::Indent{}},
-        // {"dedent"s, token_type::Dedent{}},
-        // {"EOF"s, token_type::Eof{}},
         {"and", token_type::And{}},
         {"or", token_type::Or{}},
         {"not", token_type::Not{}},
@@ -245,10 +241,10 @@ class Lexer::TokenizerNumber final: public Lexer::Tokenizer_interface
 {
 public:
 
-    TokenizerNumber(std::string_view line)
-    {
-        Parse(line);
-    }
+    // TokenizerNumber(std::string_view line)
+    // {
+    //     Parse(line);
+    // }
 
     void Parse(std::string_view line) override
     {
@@ -293,6 +289,44 @@ private:
     Token number_;
 };
 
+class Lexer::TokenizerString final: public Lexer::Tokenizer_interface
+{
+public:
+
+    // TokenizerString(std::string_view line)
+    // {
+    //     Parse(line);
+    // }
+
+    void Parse(std::string_view line) override
+    {
+        if (line[0] == '"')
+        {
+            pos_end_ = line.find_first_of('"', 1);
+        }
+        else 
+        {
+            pos_end_ = line.find_first_of('\'', 1);
+        }
+
+        // тут нужна обработка ошибок если строка не закрыта
+
+        token_ = token_type::String{std::string{line.substr(1, pos_end_ - 1)}};
+
+    }
+    Token GetToken() override
+    {
+        return std::move(token_);
+    }
+    size_t GetTokenWordEnd() override
+    {
+        return pos_end_;
+    }
+
+private:
+    Token token_;
+    size_t pos_end_ = 0;
+};
 // Контексты end----------------------------------------------------------------------------------------
 
 Lexer::Lexer(std::istream& input)
@@ -339,15 +373,21 @@ void Lexer::BufferPareser(std::string_view line, bool is_newline = false)
 
         BufferPareser({line.data() + 1}, true);
     }
-    else if (line[0] == '#') // думаю что нужно будет сделать контекст для комментариев
-    {
-    }
     else if (std::isdigit(line[0]))
     {
         auto tokenize = TokenizerNumber(line);
         tokens_.emplace_back(tokenize.GetToken());
 
         BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
+    }
+    else if (line[0] == '"' || line[0] == '\'')
+    {
+        auto tokenize = TokenizerString(line);
+        tokens_.emplace_back(tokenize.GetToken());
+        BufferPareser({line.data() + tokenize.GetTokenWordEnd()});
+    }
+    else if (line[0] == '#') // думаю что нужно будет сделать контекст для комментариев
+    {
     }
     else // нужно сделать парсинг строкового типа
     {

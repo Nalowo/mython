@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <stack>
+#include <memory>
+
 
 namespace parse {
 
@@ -229,10 +231,29 @@ private:
     class TokenizerIntend;
     class TokenizerNewline;
     class TokenizerSomeWord;
-    class TokenizerNumber; // to do
+    class TokenizerNumber;
+    class TokenizerString;
 
     std::list<Token> tokens_;
     std::list<Token>::iterator curr_token_ = tokens_.end();
+
+    std::unordered_map<char, Tokenizer_interface*> tokenizers_ // чтобы это работало нужно вынести сюда описание классов
+    {
+        {' ', std::make_unique<TokenizerIntend>()},
+        {'\n', std::make_unique<TokenizerNewline>()},
+        {'\'', std::make_unique<TokenizerString>()},
+        {'"', std::make_unique<TokenizerString>()},
+        {'1', std::make_unique<TokenizerNumber>()},
+        {'2', std::make_unique<TokenizerNumber>()},
+        {'3', std::make_unique<TokenizerNumber>()},
+        {'4', std::make_unique<TokenizerNumber>()},
+        {'5', std::make_unique<TokenizerNumber>()},
+        {'6', std::make_unique<TokenizerNumber>()},
+        {'7', std::make_unique<TokenizerNumber>()},
+        {'8', std::make_unique<TokenizerNumber>()},
+        {'9', std::make_unique<TokenizerNumber>()},
+        {'0', std::make_unique<TokenizerNumber>()},
+    };
 };
 
 }  // namespace parse
