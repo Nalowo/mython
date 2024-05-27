@@ -187,7 +187,8 @@ namespace parse
         }
 
     private:
-        // Реализуйте приватную часть самостоятельно
+        std::list<Token> tokens_;
+        std::list<Token>::iterator current_token_ = tokens_.begin();
     };
 
 } // namespace parse

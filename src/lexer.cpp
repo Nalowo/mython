@@ -103,4 +103,26 @@ namespace parse
         throw std::logic_error("Not implemented"s);
     }
 
+    class Tokinazer_Base
+    {
+    protected:
+        Tokinazer_Base(std::string_view buff): buff_(buff) {}
+        virtual void PushToOutput(Token &&) = 0;
+        virtual ~Tokinazer_Base() = default;
+        std::string_view buff_;
+    }; // end of class Tokinazer_Base
+
+    template <typename T>
+    class Tokinazer final: public Tokinazer_Base
+    {
+    public:
+        Tokinazer(std::string_view buff, T& output): Tokinazer_Base(buff), output_(output) {}
+        void PushToOutput(Token &&token) override
+        {
+            output_.push_back(std::forward<Token>(token));
+        }
+    private:
+        T& output_;
+    }; // end of class Tokinazer
+
 } // namespace parse
