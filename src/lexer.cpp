@@ -153,7 +153,14 @@ namespace parse
                 {
                     PushToOutput(HandleWord());
                 }
-                // нужно дальше реализовать обработку 
+                else if (std::isdigit(buff_[0]))
+                {
+                    PushToOutput(HandleNumber());
+                }
+                else if (buff_[0] == '"' || buff_[0] == '\'')
+                {
+                    PushToOutput(HandleString());
+                }
             }
         }
 
@@ -204,6 +211,20 @@ namespace parse
             {
                 token = Token{token_type::Id{word}};
             }
+
+            return token;
+        }
+
+        Token HandleNumber()
+        {
+            Token token;
+
+            return token;
+        }
+
+        Token HandleString()
+        {
+            Token token;
 
             return token;
         }
