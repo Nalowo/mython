@@ -101,9 +101,9 @@ namespace parse
         }
     }
 
-    class Tokinazer_Base;
+    class Tokenazer_Base;
     template <typename T>
-    class Tokinazer final;
+    class Tokenazer final;
 
     Lexer::Lexer(std::istream &input)
     {
@@ -112,7 +112,7 @@ namespace parse
         {
             ClearBuff(buff, array_size(buff));
             input.read(buff, array_size(buff) - 1);
-            Tokinazer tokinazer(buff, tokens_);
+            Tokenazer tokinazer(buff, tokens_);
             tokinazer.HandleCode();
         }
     }
@@ -129,17 +129,30 @@ namespace parse
         throw std::logic_error("Not implemented"s);
     }
 
-    class Tokinazer_Base
+    class Tokenazer_Base
     {
     protected:
-        Tokinazer_Base(std::string_view buff) : buff_(buff) {}
+        Tokenazer_Base(std::string_view buff) : buff_(buff) {}
         virtual void PushToOutput(Token &&) = 0;
-        virtual ~Tokinazer_Base() = default;
+        virtual ~Tokenazer_Base() = default;
 
         void HandleCode()
         {
             while (buff_.size() > 0)
             {
+                if (buff_[0] == '#' || comment_trig_)
+                {
+                    comment_trig_ = true;
+                    auto pos = buff_.find('\n');
+                    if (pos != std::string::npos)
+                    {
+                        buff_.remove_prefix(pos + 1);
+                        comment_trig_ = false;
+                        continue;
+                    }
+                    break;
+                }
+
                 if (std::isspace(buff_[0]))
                 {
                     if (buff_[0] == '\n')
@@ -147,6 +160,10 @@ namespace parse
                         PushToOutput(Token{token_type::Newline{}});
                         buff_.remove_prefix(1);
                         PushToOutput(HandleIntend());
+                    }
+                    else
+                    {
+                        buff_.remove_prefix(buff_.find_first_not_of(" \t"));
                     }
                 }
                 else if (std::isalpha(buff_[0]) || buff_[0] == '_')
@@ -160,6 +177,24 @@ namespace parse
                 else if (buff_[0] == '"' || buff_[0] == '\'')
                 {
                     PushToOutput(HandleString());
+                }
+                else if (std::ispunct(buff_[0]))
+                {
+                    if (std::ispunct(buff_[1]))
+                    {
+                        std::string op{buff_.substr(0, 2)};
+                        auto it = operators_.find(op);
+                        if (it != operators_.end())
+                        {
+                            PushToOutput(Token{it->second});
+                            buff_.remove_prefix(2);
+                        }
+                    }
+                    else
+                    {
+                        PushToOutput(Token{token_type::Char{buff_[0]}});
+                        buff_.remove_prefix(1);
+                    }
                 }
             }
         }
@@ -194,7 +229,7 @@ namespace parse
             Token token;
             size_t end_pos = 0;
 
-            while (buff_.size() > 0 && (std::isalnum(buff_[0]) || buff_[0] == '_'))
+            while (buff_.size() > end_pos && (std::isalnum(buff_[end_pos]) || buff_[end_pos] == '_'))
             {
                 ++end_pos;
             }
@@ -219,6 +254,15 @@ namespace parse
         {
             Token token;
 
+            size_t end_pos = 0;
+            while (buff_.size() > end_pos && std::isdigit(buff_[end_pos]))
+            {
+                ++end_pos;
+            }
+
+            token = Token{token_type::Number{std::stoi(std::string(buff_.substr(0, end_pos)))}};
+            buff_.remove_prefix(end_pos);
+
             return token;
         }
 
@@ -226,17 +270,38 @@ namespace parse
         {
             Token token;
 
+            size_t end_pos = 0;
+            while (buff_.size() > 0 && buff_[0] != '"' && buff_[0] != '\'')
+            {
+                ++end_pos;
+            }
+
+            token = Token{token_type::String{std::string{buff_.substr(0, end_pos)}}};
+            buff_.remove_prefix(end_pos);
+
             return token;
+        }
+
+        bool is_key_sign(char c) const
+        {
+            return key_sign_.find(c) != key_sign_.end();
+        }
+
+        bool is_operator_sign(const std::string &buff) const
+        {
+            return operators_.find(buff) != operators_.end();
         }
 
         std::string_view buff_;
         static uint32_t intend_level_;
         static const std::unordered_map<std::string, Token> keywords_;
         static const std::unordered_set<char> key_sign_;
-    }; // end of class Tokinazer_Base
-    uint32_t Tokinazer_Base::intend_level_ = 0;
-
-    const std::unordered_map<std::string, Token> Tokinazer_Base::keywords_ =
+        static const std::unordered_map<std::string, Token> operators_;
+        static bool comment_trig_;
+    }; // end of class Tokenazer_Base
+    uint32_t Tokenazer_Base::intend_level_ = 0;
+    bool Tokenazer_Base::comment_trig_ = false;
+    const std::unordered_map<std::string, Token> Tokenazer_Base::keywords_ =
         {
             {"class", token_type::Class{}},
             {"return", token_type::Return{}},
@@ -247,21 +312,30 @@ namespace parse
             {"and", token_type::And{}},
             {"or", token_type::Or{}},
             {"not", token_type::Not{}},
-            {"==", token_type::Eq{}},
-            {"!=", token_type::NotEq{}},
-            {"<=", token_type::LessOrEq{}},
-            {">=", token_type::GreaterOrEq{}},
             {"None", token_type::None{}},
             {"True", token_type::True{}},
             {"False", token_type::False{}},
     };
-    const std::unordered_set<char> Tokinazer_Base::key_sign_{'=', '*', '.', ',', '(', '+', '<', ')', '-'};
+    const std::unordered_map<std::string, Token> Tokenazer_Base::operators_ =
+        {
+            {"==", token_type::Eq{}},
+            {"!=", token_type::NotEq{}},
+            {"<=", token_type::LessOrEq{}},
+            {">=", token_type::GreaterOrEq{}},
+    };
+    const std::unordered_set<char> Tokenazer_Base::key_sign_{'=', '*', '.', ',', '(', '+', '<', ')', '-'};
 
     template <typename T>
-    class Tokinazer final : private Tokinazer_Base
+    concept T_has_put_to_output = requires(T obj) {
+        { obj.push_back(std::declval<Token>()) };
+    };
+
+    template <typename T>
+        requires T_has_put_to_output<T>
+    class Tokenazer final : private Tokenazer_Base
     {
     public:
-        Tokinazer(std::string_view buff, T &output) : Tokinazer_Base(buff), output_(output) {}
+        Tokenazer(std::string_view buff, T &output) : Tokenazer_Base(buff), output_(output) {}
         void PushToOutput(Token &&token) override
         {
             output_.push_back(std::forward<Token>(token));
@@ -269,11 +343,10 @@ namespace parse
 
         void HandleCode()
         {
-            Tokinazer_Base::HandleCode();
+            Tokenazer_Base::HandleCode();
         }
 
     private:
         T &output_;
-    }; // end of class Tokinazer
-
+    }; // end of class Tokenazer
 } // namespace parse
