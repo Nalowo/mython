@@ -8,5 +8,4 @@ set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 
 # ${MAIN_FILE} должно устанавливаться -D аргументом при build
-# add_executable(${PROJECT_NAME} ${MAIN_FILE} ${SRC_DIR}/lexer.cpp ${SRC_DIR}/lexer_test_open.cpp)
-add_executable(${PROJECT_NAME} ${SRC_DIR}/lexer.cpp ${SRC_DIR}/lexer_test_open.cpp)
+add_executable(${PROJECT_NAME} ${MAIN_FILE} ${SRC_DIR}/lexer.cpp ${SRC_DIR}/lexer_test_open.cpp)
