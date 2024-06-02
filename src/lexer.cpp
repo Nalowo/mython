@@ -87,48 +87,7 @@ namespace parse
         return os << "Unknown token :("sv;
     }
 
-    template <typename T, size_t N>
-    constexpr size_t array_size(const T (&)[N]) noexcept
-    {
-        return N;
-    }
-
-    static void ClearBuff(char *buff, size_t buff_size)
-    {
-        for (size_t i = 0; i < buff_size; ++i)
-        {
-            buff[i] = '\0';
-        }
-    }
-
-    class Tokenazer_Base;
-    template <typename T>
-    class Tokenazer final;
-
-    Lexer::Lexer(std::istream &input)
-    {
-        char buff[1024];
-        while (input.good())
-        {
-            ClearBuff(buff, array_size(buff));
-            input.read(buff, array_size(buff) - 1);
-            Tokenazer tokinazer(buff, tokens_);
-            tokinazer.HandleCode();
-        }
-    }
-
-    const Token &Lexer::CurrentToken() const
-    {
-        // Заглушка. Реализуйте метод самостоятельно
-        throw std::logic_error("Not implemented"s);
-    }
-
-    Token Lexer::NextToken()
-    {
-        // Заглушка. Реализуйте метод самостоятельно
-        throw std::logic_error("Not implemented"s);
-    }
-
+//=============================Tokenazer=====================================
     class Tokenazer_Base
     {
     protected:
@@ -326,16 +285,15 @@ namespace parse
     const std::unordered_set<char> Tokenazer_Base::key_sign_{'=', '*', '.', ',', '(', '+', '<', ')', '-'};
 
     template <typename T>
-    concept T_has_put_to_output = requires(T obj) {
+    concept T_has_put_to_output = requires(T &obj) {
         { obj.push_back(std::declval<Token>()) };
     };
 
-    template <typename T>
-        requires T_has_put_to_output<T>
-    class Tokenazer final : private Tokenazer_Base
+    template <typename T> requires T_has_put_to_output<T>
+    class Tokenazer final : private parse::Tokenazer_Base
     {
     public:
-        Tokenazer(std::string_view buff, T &output) : Tokenazer_Base(buff), output_(output) {}
+        Tokenazer(std::string_view buff, T &output) : parse::Tokenazer_Base(buff), output_(output) {}
         void PushToOutput(Token &&token) override
         {
             output_.push_back(std::forward<Token>(token));
@@ -343,10 +301,51 @@ namespace parse
 
         void HandleCode()
         {
-            Tokenazer_Base::HandleCode();
+            parse::Tokenazer_Base::HandleCode();
         }
 
     private:
         T &output_;
     }; // end of class Tokenazer
+//================================Tokenazer=====================================
+
+    template <typename T, size_t N>
+    constexpr size_t array_size(const T (&)[N]) noexcept
+    {
+        return N;
+    }
+
+    static void ClearBuff(char *buff, size_t buff_size)
+    {
+        for (size_t i = 0; i < buff_size; ++i)
+        {
+            buff[i] = '\0';
+        }
+    }
+
+    Lexer::Lexer(std::istream &input)
+    {
+        char buff[1024];
+        while (input.good())
+        {
+            ClearBuff(buff, array_size(buff));
+            input.read(buff, array_size(buff) - 1);
+            Tokenazer tokinazer(buff, tokens_);
+            tokinazer.HandleCode();
+        }
+
+        tokens_.push_back(Token{token_type::Eof{}});
+    }
+
+    const Token &Lexer::CurrentToken() const
+    {
+        // Заглушка. Реализуйте метод самостоятельно
+        throw std::logic_error("Not implemented"s);
+    }
+
+    Token Lexer::NextToken()
+    {
+        // Заглушка. Реализуйте метод самостоятельно
+        throw std::logic_error("Not implemented"s);
+    }
 } // namespace parse
