@@ -113,13 +113,13 @@ namespace parse
         }
 
         template <typename T>
-        [[nodiscard]] const T &As() const
+        [[nodiscard]] const T& As() const
         {
             return std::get<T>(*this);
         }
 
         template <typename T>
-        [[nodiscard]] const T *TryAs() const
+        [[nodiscard]] const T* TryAs() const
         {
             return std::get_if<T>(this);
         }
@@ -153,18 +153,30 @@ namespace parse
         const T &Expect() const
         {
             using namespace std::literals;
-            // Заглушка. Реализуйте метод самостоятельно
-            throw LexerError("Not implemented"s);
+
+            auto curr = CurrentToken().TryAs<T>();
+
+            if (!curr)
+            {
+                throw LexerError("Wrong token type"s);
+            }
+
+            return *curr;
         }
 
         // Метод проверяет, что текущий токен имеет тип T, а сам токен содержит значение value.
         // В противном случае метод выбрасывает исключение LexerError
         template <typename T, typename U>
-        void Expect(const U & /*value*/) const
+        void Expect(const U& value) const
         {
             using namespace std::literals;
-            // Заглушка. Реализуйте метод самостоятельно
-            throw LexerError("Not implemented"s);
+            
+            auto& curr = Expect<T>();
+
+            if (curr.value != value)
+            {
+                throw LexerError("Wrong token value"s);
+            }
         }
 
         // Если следующий токен имеет тип T, метод возвращает ссылку на него.
@@ -173,23 +185,34 @@ namespace parse
         const T &ExpectNext()
         {
             using namespace std::literals;
-            // Заглушка. Реализуйте метод самостоятельно
-            throw LexerError("Not implemented"s);
+            auto it = std::next(current_token_);
+            
+            if (it == tokens_.end() || !it->Is<T>())
+            {
+                throw LexerError("Wrong token type"s);
+            }
+
+            return it->As<T>();
         }
 
         // Метод проверяет, что следующий токен имеет тип T, а сам токен содержит значение value.
         // В противном случае метод выбрасывает исключение LexerError
         template <typename T, typename U>
-        void ExpectNext(const U & /*value*/)
+        void ExpectNext(const U& value)
         {
             using namespace std::literals;
-            // Заглушка. Реализуйте метод самостоятельно
-            throw LexerError("Not implemented"s);
+            
+            auto it = std::next(current_token_);
+            
+            if (it == tokens_.end() || !it->Is<T>() && it->As<T>().value != value)
+            {
+                throw LexerError("Wrong token type"s);
+            }
         }
 
     private:
         std::list<Token> tokens_;
-        std::list<Token>::iterator current_token_ = tokens_.begin();
+        std::list<Token>::iterator current_token_ = tokens_.end();
     };
 
 } // namespace parse

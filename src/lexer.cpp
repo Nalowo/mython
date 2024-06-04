@@ -101,15 +101,8 @@ namespace parse
             {
                 if (buff_[0] == '#' || comment_trig_)
                 {
-                    comment_trig_ = true;
-                    auto pos = buff_.find('\n');
-                    if (pos != std::string::npos)
-                    {
-                        buff_.remove_prefix(pos + 1);
-                        comment_trig_ = false;
-                        continue;
-                    }
-                    break;
+                    HandleComment();
+                    continue;
                 }
 
                 if (std::isspace(buff_[0]))
@@ -241,6 +234,18 @@ namespace parse
             return token;
         }
 
+        void HandleComment()
+        {
+            comment_trig_ = true;
+
+            auto pos = buff_.find('\n');
+            buff_.remove_prefix(pos);
+            if (pos != std::string::npos)
+            {
+                comment_trig_ = false;
+            }
+        }
+
         bool is_key_sign(char c) const
         {
             return key_sign_.find(c) != key_sign_.end();
@@ -334,18 +339,22 @@ namespace parse
             tokinazer.HandleCode();
         }
 
-        tokens_.push_back(Token{token_type::Eof{}});
+        tokens_.emplace_back(Token{token_type::Eof{}});
+        current_token_ = tokens_.begin();
     }
 
     const Token &Lexer::CurrentToken() const
     {
-        // Заглушка. Реализуйте метод самостоятельно
-        throw std::logic_error("Not implemented"s);
+        return *current_token_;
     }
 
     Token Lexer::NextToken()
     {
-        // Заглушка. Реализуйте метод самостоятельно
-        throw std::logic_error("Not implemented"s);
+        if (current_token_ != (--tokens_.end()))
+        {
+            ++current_token_;
+        }
+
+        return *current_token_;
     }
 } // namespace parse
