@@ -4,6 +4,7 @@
 #include <charconv>
 #include <unordered_map>
 #include <unordered_set>
+#include <optional>
 
 using namespace std;
 
@@ -111,7 +112,11 @@ namespace parse
                     {
                         PushToOutput(Token{token_type::Newline{}});
                         buff_.remove_prefix(1);
-                        PushToOutput(HandleIntend());
+                        auto token_opt = HandleIntend();
+                        if (token_opt)
+                        {
+                            PushToOutput(std::move(*token_opt));
+                        }
                     }
                     else
                     {
@@ -152,9 +157,9 @@ namespace parse
         }
 
     private:
-        Token HandleIntend()
+        std::optional<Token> HandleIntend()
         {
-            Token token;
+            std::optional<Token> token_opt = std::nullopt;
             uint32_t curr_inten_lvl = 0;
 
             while (buff_.size() > 0 && buff_[0] == ' ')
@@ -165,15 +170,15 @@ namespace parse
 
             if (curr_inten_lvl > intend_level_)
             {
-                token = Token{token_type::Indent{}};
+                token_opt = Token{token_type::Indent{}};
             }
             else if (curr_inten_lvl < intend_level_)
             {
-                token = Token{token_type::Dedent{}};
+                token_opt = Token{token_type::Dedent{}};
             }
 
             intend_level_ = curr_inten_lvl;
-            return token;
+            return token_opt;
         }
 
         Token HandleWord()

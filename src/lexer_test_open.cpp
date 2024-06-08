@@ -6,6 +6,12 @@
 
 using namespace std;
 
+void TokenPrinter(const parse::Token& token) 
+{
+    std::cout << token;
+}
+
+
 namespace parse {
 
 namespace {
