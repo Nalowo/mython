@@ -137,21 +137,7 @@ namespace parse
                 }
                 else if (std::ispunct(buff_[0]))
                 {
-                    if (std::ispunct(buff_[1]))
-                    {
-                        std::string op{buff_.substr(0, 2)};
-                        auto it = operators_.find(op);
-                        if (it != operators_.end())
-                        {
-                            PushToOutput(Token{it->second});
-                            buff_.remove_prefix(2);
-                        }
-                    }
-                    else
-                    {
-                        PushToOutput(Token{token_type::Char{buff_[0]}});
-                        buff_.remove_prefix(1);
-                    }
+                    PushToOutput(HandleOperator());
                 }
             }
         }
@@ -226,15 +212,40 @@ namespace parse
         Token HandleString()
         {
             Token token;
+            
+            char sep = buff_[0];
+            buff_.remove_prefix(1);
 
             size_t end_pos = 0;
-            while (buff_.size() > 0 && buff_[0] != '"' && buff_[0] != '\'')
+            while (buff_.size() > 0 && buff_[end_pos] != sep)
             {
                 ++end_pos;
             }
 
             token = Token{token_type::String{std::string{buff_.substr(0, end_pos)}}};
-            buff_.remove_prefix(end_pos);
+            buff_.remove_prefix(++end_pos);
+
+            return token;
+        }
+
+        Token HandleOperator()
+        {
+            Token token;
+
+            if (std::ispunct(buff_[1]))
+            {
+                std::string op{buff_.substr(0, 2)};
+                auto it = operators_.find(op);
+                if (it != operators_.end())
+                {
+                    token = it->second;
+                    buff_.remove_prefix(2);
+                    return token;
+                }
+            }
+
+            token = operators_.at(std::string{buff_[0]});
+            buff_.remove_prefix(1);
 
             return token;
         }
@@ -291,8 +302,18 @@ namespace parse
             {"!=", token_type::NotEq{}},
             {"<=", token_type::LessOrEq{}},
             {">=", token_type::GreaterOrEq{}},
+            {"+", token_type::Char{'+'}},
+            {"-", token_type::Char{'-'}},
+            {"*", token_type::Char{'*'}},
+            {"/", token_type::Char{'/'}},
+            {".", token_type::Char{'.'}},
+            {",", token_type::Char{','}},
+            {"(", token_type::Char{'('}},
+            {")", token_type::Char{')'}},
+            {"<", token_type::Char{'<'}},
+            {">", token_type::Char{'>'}},
+            {"=", token_type::Char{'='}},
     };
-    const std::unordered_set<char> Tokenazer_Base::key_sign_{'=', '*', '.', ',', '(', '+', '<', ')', '-'};
 
     template <typename T>
     concept T_has_put_to_output = requires(T &obj) {
