@@ -4,7 +4,7 @@
 #include <charconv>
 #include <unordered_map>
 #include <unordered_set>
-#include <optional>
+#include <vector>
 
 using namespace std;
 
@@ -98,6 +98,8 @@ namespace parse
 
         void HandleCode()
         {
+            buff_.remove_prefix(buff_.find_first_not_of(" \t\n"));
+
             while (buff_.size() > 0)
             {
                 if (buff_[0] == '#' || comment_trig_)
@@ -112,15 +114,18 @@ namespace parse
                     {
                         PushToOutput(Token{token_type::Newline{}});
                         buff_.remove_prefix(1);
-                        auto token_opt = HandleIntend();
-                        if (token_opt)
+                        auto tokens = HandleIntend();
+                        if (!tokens.empty())
                         {
-                            PushToOutput(std::move(*token_opt));
+                            for (auto &token : tokens)
+                            {
+                                PushToOutput(std::move(token));
+                            }
                         }
                     }
                     else
                     {
-                        buff_.remove_prefix(buff_.find_first_not_of(" \t"));
+                        buff_.remove_prefix(buff_.find_first_not_of(" \t\n"));
                     }
                 }
                 else if (std::isalpha(buff_[0]) || buff_[0] == '_')
@@ -143,28 +148,33 @@ namespace parse
         }
 
     private:
-        std::optional<Token> HandleIntend()
+        std::vector<Token> HandleIntend()
         {
-            std::optional<Token> token_opt = std::nullopt;
+            std::vector<Token> tokens;
             uint32_t curr_inten_lvl = 0;
 
-            while (buff_.size() > 0 && buff_[0] == ' ')
+            auto space_count = buff_.find_first_not_of(" ");
+            if (space_count == std::string::npos)
             {
-                ++curr_inten_lvl;
-                buff_.remove_prefix(1);
+                return tokens;
             }
 
+            curr_inten_lvl = space_count / 2;
+            buff_.remove_prefix(space_count);
+            
             if (curr_inten_lvl > intend_level_)
             {
-                token_opt = Token{token_type::Indent{}};
+                auto diff = curr_inten_lvl - intend_level_;
+                tokens.resize(diff, Token{token_type::Indent{}});
             }
             else if (curr_inten_lvl < intend_level_)
             {
-                token_opt = Token{token_type::Dedent{}};
+                auto diff = intend_level_ - curr_inten_lvl;
+                tokens.resize(diff, Token{token_type::Dedent{}});
             }
 
             intend_level_ = curr_inten_lvl;
-            return token_opt;
+            return tokens;
         }
 
         Token HandleWord()
@@ -278,9 +288,11 @@ namespace parse
         static const std::unordered_set<char> key_sign_;
         static const std::unordered_map<std::string, Token> operators_;
         static bool comment_trig_;
+        // static bool new_line_trig_;
     }; // end of class Tokenazer_Base
     uint32_t Tokenazer_Base::intend_level_ = 0;
     bool Tokenazer_Base::comment_trig_ = false;
+    // bool Tokenazer_Base::new_line_trig_ = false;
     const std::unordered_map<std::string, Token> Tokenazer_Base::keywords_ =
         {
             {"class", token_type::Class{}},
@@ -346,24 +358,27 @@ namespace parse
         return N;
     }
 
-    static void ClearBuff(char *buff, size_t buff_size)
+    size_t StreamCounter(std::istream &in)
     {
-        for (size_t i = 0; i < buff_size; ++i)
-        {
-            buff[i] = '\0';
-        }
+        size_t count = 0;
+        in.seekg(0, std::ios::end);
+        count = in.tellg();
+        in.seekg(0, std::ios::beg);
+        return count;
     }
 
     Lexer::Lexer(std::istream &input)
     {
-        char buff[1024];
-        while (input.good())
-        {
-            ClearBuff(buff, array_size(buff));
-            input.read(buff, array_size(buff) - 1);
-            Tokenazer tokinazer(buff, tokens_);
-            tokinazer.HandleCode();
-        }
+        char* buff = nullptr;
+
+        auto in_stream_count = StreamCounter(input);
+        buff = new char[in_stream_count + 1];
+        input.read(buff, in_stream_count);
+
+        Tokenazer tokinazer(std::string_view{buff, in_stream_count}, tokens_);
+        tokinazer.HandleCode();
+
+        delete[] buff;
 
         tokens_.emplace_back(Token{token_type::Eof{}});
         current_token_ = tokens_.begin();
