@@ -98,7 +98,7 @@ namespace parse
 
         void HandleCode()
         {
-            buff_.remove_prefix(buff_.find_first_not_of(" \t\n"));
+            buff_.remove_prefix(buff_.find_first_not_of("\n"));
 
             while (buff_.size() > 0)
             {
@@ -153,9 +153,12 @@ namespace parse
             std::vector<Token> tokens;
             uint32_t curr_inten_lvl = 0;
 
-            auto space_count = buff_.find_first_not_of(" ");
+            auto space_count = buff_.find_first_not_of(" \n\t");
             if (space_count == std::string::npos)
             {
+                tokens.resize(intend_level_, Token{token_type::Dedent{}});
+                intend_level_ = 0;
+                buff_.remove_prefix(buff_.size());
                 return tokens;
             }
 
