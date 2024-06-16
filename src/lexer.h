@@ -20,6 +20,9 @@ namespace parse
 
         struct Id
         {                      // Лексема «идентификатор»
+            Id(const std::string& v) : value(v) {}
+            Id(std::string&& v) : value(std::move(v)) {}
+
             std::string value; // Имя идентификатора
         };
 
@@ -30,6 +33,9 @@ namespace parse
 
         struct String
         { // Лексема «строковая константа»
+            String(const std::string& v) : value(v) {}
+            String(std::string&& v) : value(std::move(v)) {}
+
             std::string value;
         };
 
@@ -192,6 +198,7 @@ namespace parse
                 throw LexerError("Wrong token type"s);
             }
 
+            current_token_ = it;
             return it->As<T>();
         }
 
@@ -204,10 +211,12 @@ namespace parse
             
             auto it = std::next(current_token_);
             
-            if (it == tokens_.end() || !it->Is<T>() && it->As<T>().value != value)
+            if (it == tokens_.end() || !it->Is<T>() || it->As<T>().value != value)
             {
                 throw LexerError("Wrong token type"s);
             }
+
+            current_token_ = it;
         }
 
     private:

@@ -88,9 +88,20 @@ namespace parse
         return os << "Unknown token :("sv;
     }
 
-//=============================Tokenazer=====================================
+    //=============================Tokenazer=====================================
     class Tokenazer_Base
     {
+    public:
+        static uint32_t GetIndentLevel()
+        {
+            return Tokenazer_Base::intend_level_;
+        }
+
+        static void EraseIndent()
+        {
+            Tokenazer_Base::intend_level_ = 0;
+        }
+
     protected:
         Tokenazer_Base(std::string_view buff) : buff_(buff) {}
         virtual void PushToOutput(Token &&) = 0;
@@ -98,11 +109,24 @@ namespace parse
 
         void HandleCode()
         {
-            buff_.remove_prefix(buff_.find_first_not_of("\n"));
-
-            while (buff_.size() > 0)
+            if (buff_[0] == '#')
             {
-                if (buff_[0] == '#' || comment_trig_)
+                HandleComment();
+                return;
+            }
+
+            auto tokens = HandleIntend();
+            if (!tokens.empty())
+            {
+                for (auto &token : tokens)
+                {
+                    PushToOutput(std::move(token));
+                }
+            }
+
+            while (!buff_.empty())
+            {
+                if (buff_[0] == '#')
                 {
                     HandleComment();
                     continue;
@@ -110,23 +134,7 @@ namespace parse
 
                 if (std::isspace(buff_[0]))
                 {
-                    if (buff_[0] == '\n')
-                    {
-                        PushToOutput(Token{token_type::Newline{}});
-                        buff_.remove_prefix(1);
-                        auto tokens = HandleIntend();
-                        if (!tokens.empty())
-                        {
-                            for (auto &token : tokens)
-                            {
-                                PushToOutput(std::move(token));
-                            }
-                        }
-                    }
-                    else
-                    {
-                        buff_.remove_prefix(buff_.find_first_not_of(" \t\n"));
-                    }
+                    buff_.remove_prefix(buff_.find_first_not_of(" \t\n"));
                 }
                 else if (std::isalpha(buff_[0]) || buff_[0] == '_')
                 {
@@ -145,6 +153,7 @@ namespace parse
                     PushToOutput(HandleOperator());
                 }
             }
+            PushToOutput(Token{token_type::Newline{}});
         }
 
     private:
@@ -156,15 +165,12 @@ namespace parse
             auto space_count = buff_.find_first_not_of(" \n\t");
             if (space_count == std::string::npos)
             {
-                tokens.resize(intend_level_, Token{token_type::Dedent{}});
-                intend_level_ = 0;
-                buff_.remove_prefix(buff_.size());
                 return tokens;
             }
 
             curr_inten_lvl = space_count / 2;
             buff_.remove_prefix(space_count);
-            
+
             if (curr_inten_lvl > intend_level_)
             {
                 auto diff = curr_inten_lvl - intend_level_;
@@ -200,7 +206,7 @@ namespace parse
             }
             else
             {
-                token = Token{token_type::Id{word}};
+                token = token_type::Id{std::move(word)};
             }
 
             return token;
@@ -216,7 +222,7 @@ namespace parse
                 ++end_pos;
             }
 
-            token = Token{token_type::Number{std::stoi(std::string(buff_.substr(0, end_pos)))}};
+            token = token_type::Number{std::stoi(std::string(buff_.substr(0, end_pos)))};
             buff_.remove_prefix(end_pos);
 
             return token;
@@ -225,7 +231,7 @@ namespace parse
         Token HandleString()
         {
             Token token;
-            
+
             char sep = buff_[0];
             buff_.remove_prefix(1);
 
@@ -235,7 +241,7 @@ namespace parse
                 ++end_pos;
             }
 
-            token = Token{token_type::String{std::string{buff_.substr(0, end_pos)}}};
+            token = token_type::String{std::string{buff_.substr(0, end_pos)}};
             buff_.remove_prefix(++end_pos);
 
             return token;
@@ -265,14 +271,7 @@ namespace parse
 
         void HandleComment()
         {
-            comment_trig_ = true;
-
-            auto pos = buff_.find('\n');
-            buff_.remove_prefix(pos);
-            if (pos != std::string::npos)
-            {
-                comment_trig_ = false;
-            }
+            buff_.remove_prefix(buff_.size());
         }
 
         bool is_key_sign(char c) const
@@ -290,12 +289,8 @@ namespace parse
         static const std::unordered_map<std::string, Token> keywords_;
         static const std::unordered_set<char> key_sign_;
         static const std::unordered_map<std::string, Token> operators_;
-        static bool comment_trig_;
-        // static bool new_line_trig_;
     }; // end of class Tokenazer_Base
     uint32_t Tokenazer_Base::intend_level_ = 0;
-    bool Tokenazer_Base::comment_trig_ = false;
-    // bool Tokenazer_Base::new_line_trig_ = false;
     const std::unordered_map<std::string, Token> Tokenazer_Base::keywords_ =
         {
             {"class", token_type::Class{}},
@@ -328,6 +323,7 @@ namespace parse
             {"<", token_type::Char{'<'}},
             {">", token_type::Char{'>'}},
             {"=", token_type::Char{'='}},
+            {":", token_type::Char{':'}},
     };
 
     template <typename T>
@@ -335,11 +331,13 @@ namespace parse
         { obj.push_back(std::declval<Token>()) };
     };
 
-    template <typename T> requires T_has_put_to_output<T>
+    template <typename T>
+        requires T_has_put_to_output<T>
     class Tokenazer final : private parse::Tokenazer_Base
     {
     public:
-        Tokenazer(std::string_view buff, T &output) : parse::Tokenazer_Base(buff), output_(output) {}
+        Tokenazer(std::string_view buff, T &output)
+            : parse::Tokenazer_Base(buff), output_(output) {}
         void PushToOutput(Token &&token) override
         {
             output_.push_back(std::forward<Token>(token));
@@ -353,7 +351,7 @@ namespace parse
     private:
         T &output_;
     }; // end of class Tokenazer
-//================================Tokenazer=====================================
+    //================================Tokenazer=====================================
 
     template <typename T, size_t N>
     constexpr size_t array_size(const T (&)[N]) noexcept
@@ -361,27 +359,22 @@ namespace parse
         return N;
     }
 
-    size_t StreamCounter(std::istream &in)
-    {
-        size_t count = 0;
-        in.seekg(0, std::ios::end);
-        count = in.tellg();
-        in.seekg(0, std::ios::beg);
-        return count;
-    }
-
     Lexer::Lexer(std::istream &input)
     {
-        char* buff = nullptr;
+        std::string buff;
+        while (std::getline(input, buff))
+        {
+            if (buff.empty())
+                continue;
 
-        auto in_stream_count = StreamCounter(input);
-        buff = new char[in_stream_count + 1];
-        input.read(buff, in_stream_count);
+            Tokenazer tokinazer(buff, tokens_);
+            tokinazer.HandleCode();
+        }
 
-        Tokenazer tokinazer(std::string_view{buff, in_stream_count}, tokens_);
-        tokinazer.HandleCode();
-
-        delete[] buff;
+        tokens_.resize(
+            tokens_.size() + Tokenazer_Base::GetIndentLevel(),
+            Token{token_type::Dedent{}});
+        Tokenazer_Base::EraseIndent();
 
         tokens_.emplace_back(Token{token_type::Eof{}});
         current_token_ = tokens_.begin();
