@@ -72,7 +72,7 @@ void TestIds() {
 
 void TestStrings() {
     istringstream input(
-        R"('word' "two words" 'long string with a double quote " inside' "another long string with single quote ' inside")"s);
+        R"('word' "two words" 'long string with a double quote " inside' "another long string with single quote ' inside" "\"\'\t\n")"s);
     Lexer lexer(input);
 
     ASSERT_EQUAL(lexer.CurrentToken(), Token(token_type::String{"word"s}));
@@ -81,6 +81,8 @@ void TestStrings() {
                  Token(token_type::String{"long string with a double quote \" inside"s}));
     ASSERT_EQUAL(lexer.NextToken(),
                  Token(token_type::String{"another long string with single quote ' inside"s}));
+    ASSERT_EQUAL(lexer.NextToken(),
+                 Token(token_type::String{"\"\'\t\n"s}));
 }
 
 void TestOperations() {

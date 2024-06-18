@@ -88,6 +88,45 @@ namespace parse
         return os << "Unknown token :("sv;
     }
 
+    std::string Unescape(const std::string &str)
+    {
+        std::string result;
+        result.reserve(str.size());
+        for (size_t i = 0; i < str.size(); ++i)
+        {
+            if (str[i] == '\\' && i + 1 < str.size())
+            {
+                switch (str[++i])
+                {
+                case '\"':
+                    result += '\"';
+                    break;
+                case '\'':
+                    result += '\'';
+                    break;
+                case 't':
+                    result += '\t';
+                    break;
+                case 'n':
+                    result += '\n';
+                    break;
+                case '\\':
+                    result += '\\';
+                    break;
+                default:
+                    result += '\\';
+                    result += str[i];
+                    break;
+                }
+            }
+            else
+            {
+                result += str[i];
+            }
+        }
+        return result;
+    }
+
     //=============================Tokenazer=====================================
     class Tokenazer_Base
     {
@@ -134,7 +173,8 @@ namespace parse
 
                 if (std::isspace(buff_[0]))
                 {
-                    buff_.remove_prefix(buff_.find_first_not_of(" \t\n"));
+                    auto space_count = buff_.find_first_not_of(" \n\t");
+                    buff_.remove_prefix(space_count == std::string::npos ? buff_.size() : space_count);
                 }
                 else if (std::isalpha(buff_[0]) || buff_[0] == '_')
                 {
@@ -236,12 +276,20 @@ namespace parse
             buff_.remove_prefix(1);
 
             size_t end_pos = 0;
+            bool has_escape = false;
             while (buff_.size() > 0 && buff_[end_pos] != sep)
             {
+                if (buff_[end_pos] == '\\')
+                {
+                    has_escape = true;
+                    ++end_pos;
+                }
                 ++end_pos;
             }
 
-            token = token_type::String{std::string{buff_.substr(0, end_pos)}};
+            token = token_type::String{
+                has_escape ? Unescape(std::string(buff_.substr(0, end_pos))) : std::string(buff_.substr(0, end_pos))};
+
             buff_.remove_prefix(++end_pos);
 
             return token;
