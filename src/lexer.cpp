@@ -353,12 +353,6 @@ namespace parse
     }; // end of class Tokenazer
     //================================Tokenazer=====================================
 
-    template <typename T, size_t N>
-    constexpr size_t array_size(const T (&)[N]) noexcept
-    {
-        return N;
-    }
-
     Lexer::Lexer(std::istream &input)
     {
         std::string buff;
@@ -376,7 +370,7 @@ namespace parse
             Token{token_type::Dedent{}});
         Tokenazer_Base::EraseIndent();
 
-        tokens_.emplace_back(Token{token_type::Eof{}});
+        tokens_.emplace_back(token_type::Eof{});
         current_token_ = tokens_.begin();
     }
 
