@@ -19,9 +19,9 @@ namespace parse
         };
 
         struct Id
-        {                      // Лексема «идентификатор»
-            Id(const std::string& v) : value(v) {}
-            Id(std::string&& v) : value(std::move(v)) {}
+        { // Лексема «идентификатор»
+            Id(const std::string &v) : value(v) {}
+            Id(std::string &&v) : value(std::move(v)) {}
 
             std::string value; // Имя идентификатора
         };
@@ -33,8 +33,8 @@ namespace parse
 
         struct String
         { // Лексема «строковая константа»
-            String(const std::string& v) : value(v) {}
-            String(std::string&& v) : value(std::move(v)) {}
+            String(const std::string &v) : value(v) {}
+            String(std::string &&v) : value(std::move(v)) {}
 
             std::string value;
         };
@@ -119,13 +119,13 @@ namespace parse
         }
 
         template <typename T>
-        [[nodiscard]] const T& As() const
+        [[nodiscard]] const T &As() const
         {
             return std::get<T>(*this);
         }
 
         template <typename T>
-        [[nodiscard]] const T* TryAs() const
+        [[nodiscard]] const T *TryAs() const
         {
             return std::get_if<T>(this);
         }
@@ -173,11 +173,11 @@ namespace parse
         // Метод проверяет, что текущий токен имеет тип T, а сам токен содержит значение value.
         // В противном случае метод выбрасывает исключение LexerError
         template <typename T, typename U>
-        void Expect(const U& value) const
+        void Expect(const U &value) const
         {
             using namespace std::literals;
-            
-            auto& curr = Expect<T>();
+
+            auto &curr = Expect<T>();
 
             if (curr.value != value)
             {
@@ -192,7 +192,7 @@ namespace parse
         {
             using namespace std::literals;
             auto it = std::next(current_token_);
-            
+
             if (it == tokens_.end() || !it->Is<T>())
             {
                 throw LexerError("Wrong token type"s);
@@ -205,12 +205,12 @@ namespace parse
         // Метод проверяет, что следующий токен имеет тип T, а сам токен содержит значение value.
         // В противном случае метод выбрасывает исключение LexerError
         template <typename T, typename U>
-        void ExpectNext(const U& value)
+        void ExpectNext(const U &value)
         {
             using namespace std::literals;
-            
+
             auto it = std::next(current_token_);
-            
+
             if (it == tokens_.end() || !it->Is<T>() || it->As<T>().value != value)
             {
                 throw LexerError("Wrong token type"s);

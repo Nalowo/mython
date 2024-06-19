@@ -3,22 +3,26 @@
 
 using namespace std;
 
-namespace runtime {
-void RunObjectHolderTests(TestRunner& tr);
-void RunObjectsTests(TestRunner& tr);
-}  // namespace runtime
+namespace runtime
+{
+    void RunObjectHolderTests(TestRunner &tr);
+    void RunObjectsTests(TestRunner &tr);
+} // namespace runtime
 
-namespace {
+namespace
+{
 
-void TestAll() {
-    TestRunner tr;
-    runtime::RunObjectHolderTests(tr);
-    runtime::RunObjectsTests(tr);
-}
+    void TestAll()
+    {
+        TestRunner tr;
+        runtime::RunObjectHolderTests(tr);
+        runtime::RunObjectsTests(tr);
+    }
 
-}  // namespace
+} // namespace
 
-int main() {
+int main()
+{
     TestAll();
 
     return 0;
