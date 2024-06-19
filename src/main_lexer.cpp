@@ -14,13 +14,13 @@ int main()
     {
         TestRunner tr;
         parse::RunOpenLexerTests(tr);
-        parse::Lexer lexer(std::cin);
-        parse::Token t;
-        while ((t = lexer.CurrentToken()) != parse::token_type::Eof{})
-        {
-            std::cout << t << std::endl;
-            lexer.NextToken();
-        }
+        // parse::Lexer lexer(std::cin);
+        // parse::Token t;
+        // while ((t = lexer.CurrentToken()) != parse::token_type::Eof{})
+        // {
+        //     std::cout << t << std::endl;
+        //     lexer.NextToken();
+        // }
     }
     catch (const std::exception &e)
     {

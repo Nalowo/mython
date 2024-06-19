@@ -33,6 +33,6 @@
 
 .vscode
 
-*test.cpp
+test.cpp
 /build/
 info.txt
